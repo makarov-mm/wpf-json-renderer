@@ -1,0 +1,48 @@
+﻿<Window x:Class="WpfJsonRenderer.Presentation.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfJsonRenderer"
+        xmlns:presentation="clr-namespace:WpfJsonRenderer.Presentation"
+        mc:Ignorable="d"
+        Title="WPF JSON Renderer" Height="800" Width="1000" Background="#ADD8E6">
+    <Grid>
+        <DockPanel>
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="File">
+                    <MenuItem x:Name="OpenMenuItem" Header="Open" />
+                    <Separator />
+                    <MenuItem Header="Exit" Click="MenuExitItem_OnClick" />
+                </MenuItem>
+
+                <MenuItem Header="View">
+                    <MenuItem Header="Zoom In"  Click="MenuZoomIn_OnClick" InputGestureText="Ctrl++" />
+                    <MenuItem Header="Zoom Out" Click="MenuZoomOut_OnClick" InputGestureText="Ctrl+-" />
+                    <Separator />
+                    <MenuItem Header="Reset Zoom" Click="MenuResetZoom_OnClick" />
+                </MenuItem>
+
+                <MenuItem Header="Help">
+                    <MenuItem Header="About" Click="MenuHelpItem_OnClick" />
+                </MenuItem>
+            </Menu>
+
+            <StatusBar DockPanel.Dock="Bottom">
+                <StatusBarItem>
+                    <TextBlock x:Name="StatusTextBlock" Text="Ready" />
+                </StatusBarItem>
+                <Separator />
+                <StatusBarItem>
+                    <TextBlock x:Name="ZoomTextBlock" Text="Zoom: 100%" />
+                </StatusBarItem>
+            </StatusBar>
+
+            <Grid>
+                <presentation:Scene x:Name="SceneView"
+                                    SizeChanged="SceneView_OnSizeChanged"
+                                    ZoomChanged="SceneView_OnZoomChanged" />
+            </Grid>
+        </DockPanel>
+    </Grid>
+</Window>
