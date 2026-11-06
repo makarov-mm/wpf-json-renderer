@@ -1,14 +1,4 @@
-﻿namespace WpfJsonRenderer.Domain
-{
-    public struct Point2D
-    {
-        public double X { get; }
-        public double Y { get; }
+﻿namespace WpfJsonRenderer.Domain;
 
-        public Point2D(double x, double y)
-        {
-            X = x;
-            Y = y;
-        }
-    }
-}
+/// <summary>A point in scene coordinates (Cartesian, Y axis pointing up).</summary>
+public readonly record struct Point2D(double X, double Y);

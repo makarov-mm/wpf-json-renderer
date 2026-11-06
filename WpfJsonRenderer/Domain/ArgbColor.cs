@@ -1,18 +1,4 @@
-﻿namespace WpfJsonRenderer.Domain
-{
-    public struct ArgbColor
-    {
-        public byte A { get; }
-        public byte R { get; }
-        public byte G { get; }
-        public byte B { get; }
+﻿namespace WpfJsonRenderer.Domain;
 
-        public ArgbColor(byte a, byte r, byte g, byte b)
-        {
-            A = a;
-            R = r;
-            G = g;
-            B = b;
-        }
-    }
-}
+/// <summary>A 32-bit color: alpha, red, green and blue components.</summary>
+public readonly record struct ArgbColor(byte A, byte R, byte G, byte B);

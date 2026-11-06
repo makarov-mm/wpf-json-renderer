@@ -1,27 +1,7 @@
-﻿namespace WpfJsonRenderer.Domain
+﻿namespace WpfJsonRenderer.Domain;
+
+/// <summary>A circle, outlined or filled with <see cref="Primitive.Color"/>.</summary>
+public sealed record CirclePrimitive(Point2D Center, double Radius, bool IsFilled, ArgbColor Color) : Primitive(Color)
 {
-    public class CirclePrimitive : PrimitiveBase
-    {
-        public Point2D Center { get; }
-        public double Radius { get; }
-        public bool IsFilled { get; }
-
-        public CirclePrimitive(Point2D center, double radius, bool isFilled, ArgbColor color)
-            : base(color)
-        {
-            Center = center;
-            Radius = radius;
-            IsFilled = isFilled;
-        }
-
-        public override Rect2D GetBounds()
-        {
-            return new Rect2D(
-                Center.X - Radius,
-                Center.Y - Radius,
-                Center.X + Radius,
-                Center.Y + Radius
-            );
-        }
-    }
+    public override Rect2D Bounds => new(Center.X - Radius, Center.Y - Radius, Center.X + Radius, Center.Y + Radius);
 }

@@ -1,72 +1,111 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Newtonsoft.Json;
+﻿using System.IO;
+using System.Text.Json;
 using WpfJsonRenderer.Domain;
 
-namespace WpfJsonRenderer.Infrastructure
+namespace WpfJsonRenderer.Infrastructure;
+
+/// <summary>
+/// Loads a scene from a JSON array of primitives, for example:
+/// <code>
+/// [
+///   { "type": "line", "a": "-50; 0", "b": "50; 0", "color": "255; 255; 0; 0" },
+///   { "type": "circle", "center": "0; 0", "radius": 30.5, "filled": true, "color": "128; 0; 0; 255" },
+///   { "type": "triangle", "a": "0; 0", "b": "10,5; 0", "c": "0; 10", "filled": false, "color": "255; 0; 0; 0" }
+/// ]
+/// </code>
+/// </summary>
+public sealed class JsonSceneLoader : ISceneLoader
 {
-    public class JsonSceneLoader : ISceneLoader
+    public string FormatName => "JSON files";
+
+    public IReadOnlyList<string> FileExtensions { get; } = [".json"];
+
+    public Scene Load(string filePath)
     {
-        public string DisplayName => "JSON...";
-        public string FileDialogFilter => "JSON files (*.json)|*.json";
+        JsonPrimitiveDto?[] items = ReadItems(filePath);
+        var primitives = new Primitive[items.Length];
 
-        public bool CanLoad(string filePath)
+        for (int i = 0; i < items.Length; i++)
         {
-            return filePath != null &&
-                   filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                primitives[i] = CreatePrimitive(items[i]);
+            }
+            catch (FormatException ex)
+            {
+                throw new InvalidDataException($"Item #{i + 1}: {ex.Message}", ex);
+            }
         }
 
-        public Scene Load(string filePath)
+        return new Scene(primitives);
+    }
+
+    private static JsonPrimitiveDto?[] ReadItems(string filePath)
+    {
+        using FileStream stream = File.OpenRead(filePath);
+
+        try
         {
-            string json = File.ReadAllText(filePath);
-            List<JsonPrimitiveDto> items = JsonConvert.DeserializeObject<List<JsonPrimitiveDto>>(json);
-
-            if (items is null)
-            {
-                throw new InvalidOperationException("Unable to deserialize scene.");
-            }
-
-            return new Scene(items.Select(CreatePrimitive).ToList());
+            return JsonSerializer.Deserialize(stream, SceneJsonContext.Default.JsonPrimitiveDtoArray)
+                ?? throw new InvalidDataException("The file must contain a JSON array of primitives.");
         }
-
-        private PrimitiveBase CreatePrimitive(JsonPrimitiveDto dto)
+        catch (JsonException ex)
         {
-            if (dto is null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            string type = (dto.type ?? string.Empty).Trim().ToLowerInvariant();
-            ArgbColor color = ColorParser.Parse(dto.color);
-
-            switch (type)
-            {
-                case "line":
-                    return new LinePrimitive(
-                        CoordinateParser.ParsePoint(dto.a),
-                        CoordinateParser.ParsePoint(dto.b),
-                        color);
-
-                case "circle":
-                    return new CirclePrimitive(
-                        CoordinateParser.ParsePoint(dto.center),
-                        dto.radius ?? 0.0,
-                        dto.filled ?? false,
-                        color);
-
-                case "triangle":
-                    return new TrianglePrimitive(
-                        CoordinateParser.ParsePoint(dto.a),
-                        CoordinateParser.ParsePoint(dto.b),
-                        CoordinateParser.ParsePoint(dto.c),
-                        dto.filled ?? false,
-                        color);
-
-                default:
-                    throw new NotSupportedException($"Unsupported primitive type: {dto.type}.");
-            }
+            throw new InvalidDataException($"Invalid JSON: {ex.Message}", ex);
         }
     }
+
+    private static Primitive CreatePrimitive(JsonPrimitiveDto? item)
+    {
+        if (item is null)
+        {
+            throw new FormatException("The item is null.");
+        }
+
+        return item.Type?.Trim().ToLowerInvariant() switch
+        {
+            "line" => new LinePrimitive(
+                ReadPoint(item.A, "a"),
+                ReadPoint(item.B, "b"),
+                ReadColor(item.Color)),
+
+            "circle" => new CirclePrimitive(
+                ReadPoint(item.Center, "center"),
+                ReadRadius(item.Radius),
+                item.Filled ?? false,
+                ReadColor(item.Color)),
+
+            "triangle" => new TrianglePrimitive(
+                ReadPoint(item.A, "a"),
+                ReadPoint(item.B, "b"),
+                ReadPoint(item.C, "c"),
+                item.Filled ?? false,
+                ReadColor(item.Color)),
+
+            null => throw Missing("type"),
+            _ => throw new FormatException($"Unknown primitive type '{item.Type}'. Supported types: line, circle, triangle."),
+        };
+    }
+
+    private static Point2D ReadPoint(string? value, string property) =>
+        SceneValueParser.TryParsePoint(value ?? throw Missing(property), out Point2D point)
+            ? point
+            : throw Invalid(property, value, "X; Y");
+
+    private static ArgbColor ReadColor(string? value) =>
+        SceneValueParser.TryParseColor(value ?? throw Missing("color"), out ArgbColor color)
+            ? color
+            : throw Invalid("color", value, "A; R; G; B (0-255 each)");
+
+    private static double ReadRadius(double? value) => value switch
+    {
+        null => throw Missing("radius"),
+        double radius when radius >= 0 && double.IsFinite(radius) => radius,
+        _ => throw new FormatException($"Property 'radius' must be a non-negative number, but was {value}."),
+    };
+
+    private static FormatException Missing(string property) => new($"Property '{property}' is missing.");
+
+    private static FormatException Invalid(string property, string value, string expectedFormat) =>
+        new($"Property '{property}' has an invalid value '{value}'. Expected format: '{expectedFormat}'.");
 }

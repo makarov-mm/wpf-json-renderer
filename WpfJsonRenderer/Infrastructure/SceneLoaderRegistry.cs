@@ -1,35 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.IO;
 
-namespace WpfJsonRenderer.Infrastructure
+namespace WpfJsonRenderer.Infrastructure;
+
+/// <summary>The available scene loaders; a loader is chosen by file extension.</summary>
+public sealed class SceneLoaderRegistry(IEnumerable<ISceneLoader> loaders)
 {
-    public sealed class SceneLoaderRegistry
+    public IReadOnlyList<ISceneLoader> Loaders { get; } = [.. loaders];
+
+    /// <summary>Returns the loader for the file's extension, or <see langword="null"/> if the format is not supported.</summary>
+    public ISceneLoader? FindLoader(string filePath)
     {
-        private readonly List<ISceneLoader> _loaders;
-
-        public SceneLoaderRegistry(IEnumerable<ISceneLoader> loaders)
-        {
-            if (loaders is null)
-            {
-                throw new ArgumentNullException(nameof(loaders));
-            }
-            
-            _loaders = loaders.ToList();
-        }
-
-        public IReadOnlyList<ISceneLoader> Loaders => _loaders;
-
-        public ISceneLoader GetLoaderFor(string filePath)
-        {
-            ISceneLoader loader = _loaders.FirstOrDefault(x => x.CanLoad(filePath));
-            
-            if (loader is null)
-            {
-                throw new NotSupportedException("Unsupported file format.");
-            }
-
-            return loader;
-        }
+        string extension = Path.GetExtension(filePath);
+        return Loaders.FirstOrDefault(loader => loader.FileExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase));
     }
 }

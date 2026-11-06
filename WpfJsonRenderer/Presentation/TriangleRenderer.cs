@@ -1,35 +1,26 @@
-﻿using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Shapes;
-using WpfJsonRenderer.Application;
+﻿using System.Windows.Media;
 using WpfJsonRenderer.Domain;
 
-namespace WpfJsonRenderer.Presentation
+namespace WpfJsonRenderer.Presentation;
+
+public sealed class TriangleRenderer : PrimitiveRenderer<TrianglePrimitive>
 {
-    public sealed class TriangleRenderer : PrimitiveRendererBase
+    protected override void Render(TrianglePrimitive triangle, RenderContext context)
     {
-        public override bool CanRender(PrimitiveBase primitive) => primitive is TrianglePrimitive;
+        var geometry = new StreamGeometry();
 
-        public override void Render(PrimitiveBase primitive, Canvas canvas, CoordinateTransformer transformer)
+        using (StreamGeometryContext figure = geometry.Open())
         {
-            var triangle = (TrianglePrimitive)primitive;
-
-            Point a = transformer.Transform(triangle.A);
-            Point b = transformer.Transform(triangle.B);
-            Point c = transformer.Transform(triangle.C);
-
-            var shape = new Polygon
-            {
-                Stroke = ToBrush(triangle.Color),
-                StrokeThickness = 1,
-                Fill = triangle.IsFilled ? ToBrush(triangle.Color) : Transparent,
-            };
-
-            shape.Points.Add(a);
-            shape.Points.Add(b);
-            shape.Points.Add(c);
-
-            canvas.Children.Add(shape);
+            figure.BeginFigure(context.ToViewport(triangle.A), isFilled: triangle.IsFilled, isClosed: true);
+            figure.LineTo(context.ToViewport(triangle.B), isStroked: true, isSmoothJoin: false);
+            figure.LineTo(context.ToViewport(triangle.C), isStroked: true, isSmoothJoin: false);
         }
+
+        geometry.Freeze();
+
+        context.DrawingContext.DrawGeometry(
+            triangle.IsFilled ? context.GetFill(triangle.Color) : null,
+            context.GetStroke(triangle.Color),
+            geometry);
     }
 }

@@ -1,12 +1,13 @@
 # Vector Scene Renderer
 
-A simple 2D vector graphics viewer implemented in **C# / WPF (.NET Framework 4.8)**.
+A simple 2D vector graphics viewer implemented in **C# 14 / WPF (.NET 10)**.
 
 The application loads a scene description from a JSON file and renders basic geometric primitives such as lines, circles, and triangles.
 
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/makarov-mm?style=flat&logo=github)](https://github.com/sponsors/makarov-mm)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![C#](https://img.shields.io/badge/C%23-239120)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/makarov-mm/)
 [![Threads](https://img.shields.io/badge/Threads-000000?logo=threads&logoColor=white)](https://www.threads.net/@m.m.makarov)
 [![Instagram](https://img.shields.io/badge/Instagram-E4405F?logo=instagram&logoColor=white)](https://www.instagram.com/m.m.makarov/)
@@ -18,19 +19,20 @@ The application loads a scene description from a JSON file and renders basic geo
 
 ![Application Screenshot](screenshot.png)
 
-> Replace `screenshot.png` with your actual image file in the repository root.
-
 ---
 
 ## Features
 
-- Load scene from JSON file
+- Load a scene from a JSON file: **File → Open** (Ctrl+O), drag and drop onto the window, or pass the file on the command line
 - Render:
   - Lines
-  - Circles
+  - Circles (with optional fill)
   - Triangles (with optional fill)
-- Automatic scaling to fit the viewport
-- Aspect ratio preservation
+- Automatic fitting: scenes larger than the window are scaled down, smaller ones keep their natural size
+- Aspect ratio preservation and centering
+- Zoom with the mouse wheel or Ctrl++ / Ctrl+- (Ctrl+0 resets)
+- Scenes are loaded in the background and drawn straight into a `DrawingContext`, so large files stay responsive
+- Clear error messages for invalid files (which item, which property, what format was expected)
 - Clean separation between domain logic and rendering
 - Extensible architecture
 
@@ -38,10 +40,10 @@ The application loads a scene description from a JSON file and renders basic geo
 
 ## How to Run
 
-1. Open the solution in **Visual Studio 2022**
-2. Build the project
-3. Run the application
-4. Use **File → Open** to load a JSON scene
+Requirements: Windows and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+1. Open `WpfJsonRenderer.slnx` in **Visual Studio 2026** (or Rider), or run `dotnet run --project WpfJsonRenderer`
+2. Use **File → Open** to load a JSON scene, for example [`TestData.json`](TestData.json)
 
 ---
 
@@ -50,20 +52,21 @@ The application loads a scene description from a JSON file and renders basic geo
 The project is structured into several layers:
 
 ### Domain
-- Core data structures (Point, Color, Shapes, Scene)
-- No dependency on UI framework
+- Immutable core types: `Point2D`, `ArgbColor`, `Rect2D`, the primitives and `Scene`
+- No dependency on the UI framework
 
 ### Application
-- Scene transformation (scaling, coordinate conversion)
-- Viewport logic
+- `ViewportTransform`: fitting the scene into the viewport and converting coordinates
 
 ### Infrastructure
-- Scene loading (JSON parser)
-- File handling
+- Scene loading: `ISceneLoader`, `SceneLoaderRegistry`, `JsonSceneLoader` (System.Text.Json with source generation)
+- Parsing of point and color values
 
 ### Presentation
-- WPF UI
-- Rendering logic (drawing primitives)
+- WPF UI: `MainWindow` and the `SceneView` control
+- Rendering logic: one renderer per primitive type
+
+`App.xaml.cs` is the composition root where loaders and renderers are registered.
 
 ---
 
@@ -72,9 +75,10 @@ The project is structured into several layers:
 The renderer performs:
 
 - Conversion from Cartesian coordinates (Y-up) to screen coordinates (Y-down)
-- Uniform scaling to fit the available window
+- Uniform scaling to fit the available window, keeping a 20 px margin
 - Centering of the scene
-- Drawing using WPF primitives
+- Zooming around the center of the view
+- Drawing with WPF `DrawingContext` primitives and frozen, shared brushes and pens
 
 ---
 
@@ -82,42 +86,60 @@ The renderer performs:
 
 ### Add new primitive
 
-1. Add a new shape in the Domain layer  
-2. Extend rendering logic in Presentation  
-3. Update loader if needed  
+1. Add a record deriving from `Primitive` in the Domain layer
+2. Add a `PrimitiveRenderer<T>` in Presentation and register it in `App.xaml.cs`
+3. Read the new type in `JsonSceneLoader`
 
 ---
 
 ### Add new file format
 
-1. Implement a new scene loader  
-2. Register it in the application  
-3. UI will automatically support it  
+1. Implement `ISceneLoader`
+2. Register it in `App.xaml.cs`
+3. The Open dialog and drag and drop will support it automatically
 
 ---
 
-## Example JSON
+## Scene Format
+
+A scene is a JSON array of primitives, drawn in order:
 
 ```json
-{
-  "shapes": [
-    {
-      "type": "line",
-      "x1": 0,
-      "y1": 0,
-      "x2": 100,
-      "y2": 100,
-      "color": "#FF0000"
-    },
-    {
-      "type": "circle",
-      "cx": 50,
-      "cy": 50,
-      "radius": 25,
-      "color": "#00FF00"
-    }
-  ]
-}
+[
+  {
+    "type": "line",
+    "a": "-50; 0",
+    "b": "50; 0",
+    "color": "255; 255; 50; 50"
+  },
+  {
+    "type": "circle",
+    "center": "0; 0",
+    "radius": 30.0,
+    "filled": true,
+    "color": "180; 50; 200; 50"
+  },
+  {
+    "type": "triangle",
+    "a": "35,0; 0,0",
+    "b": "24,7; 24,7",
+    "c": "64,7; 26,8",
+    "filled": false,
+    "color": "220; 255; 80; 80"
+  }
+]
+```
+
+| Type       | Properties                                   |
+|------------|----------------------------------------------|
+| `line`     | `a`, `b`, `color`                            |
+| `circle`   | `center`, `radius`, `filled`, `color`        |
+| `triangle` | `a`, `b`, `c`, `filled`, `color`             |
+
+- Points are written as `"X; Y"`; the decimal separator may be `,` or `.` (`"12,5; -3"` or `"12.5; -3"`)
+- Colors are written as `"A; R; G; B"` with components from 0 to 255
+- `filled` is optional and defaults to `false`
+- Property names are case-insensitive; comments and trailing commas are allowed
 
 ## License
 

@@ -1,20 +1,7 @@
-﻿namespace WpfJsonRenderer.Domain
+﻿namespace WpfJsonRenderer.Domain;
+
+/// <summary>A line segment from <see cref="A"/> to <see cref="B"/>.</summary>
+public sealed record LinePrimitive(Point2D A, Point2D B, ArgbColor Color) : Primitive(Color)
 {
-    public class LinePrimitive : PrimitiveBase
-    {
-        public Point2D A { get; }
-        public Point2D B { get; }
-
-        public LinePrimitive(Point2D a, Point2D b, ArgbColor color)
-            : base(color)
-        {
-            A = a;
-            B = b;
-        }
-
-        public override Rect2D GetBounds()
-        {
-            return Rect2D.FromPoints(A, B);
-        }
-    }
+    public override Rect2D Bounds => Rect2D.FromPoints(A, B);
 }

@@ -1,31 +1,35 @@
-﻿using System.Collections.Generic;
+﻿namespace WpfJsonRenderer.Domain;
 
-namespace WpfJsonRenderer.Domain
+/// <summary>An immutable, ordered set of primitives (later ones are drawn on top).</summary>
+public sealed class Scene
 {
-    public class Scene
+    public Scene(IEnumerable<Primitive> primitives)
     {
-        public IReadOnlyList<PrimitiveBase> Primitives { get; }
+        Primitives = [.. primitives];
+        Bounds = ComputeBounds(Primitives);
+    }
 
-        public Scene(IReadOnlyList<PrimitiveBase> primitives)
+    public IReadOnlyList<Primitive> Primitives { get; }
+
+    /// <summary>Bounding box of all primitives, computed once; an empty rectangle for an empty scene.</summary>
+    public Rect2D Bounds { get; }
+
+    public bool IsEmpty => Primitives.Count == 0;
+
+    private static Rect2D ComputeBounds(IReadOnlyList<Primitive> primitives)
+    {
+        if (primitives.Count == 0)
         {
-            Primitives = primitives;
+            return default;
         }
 
-        public Rect2D GetBounds()
+        Rect2D bounds = primitives[0].Bounds;
+
+        for (int i = 1; i < primitives.Count; i++)
         {
-            if (Primitives.Count == 0)
-            {
-                return new Rect2D(0, 0, 0, 0);
-            }
-
-            Rect2D bounds = Primitives[0].GetBounds();
-
-            for (int i = 1; i < Primitives.Count; i++)
-            {
-                bounds = bounds.Expand(Primitives[i].GetBounds());
-            }
-
-            return bounds;
+            bounds = bounds.Union(primitives[i].Bounds);
         }
+
+        return bounds;
     }
 }

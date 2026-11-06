@@ -1,34 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using WpfJsonRenderer.Domain;
+﻿using WpfJsonRenderer.Domain;
 
-namespace WpfJsonRenderer.Presentation
+namespace WpfJsonRenderer.Presentation;
+
+/// <summary>Dispatches each primitive to the renderer registered for its type.</summary>
+public sealed class PrimitiveRendererRegistry(IEnumerable<IPrimitiveRenderer> renderers)
 {
-    public sealed class PrimitiveRendererRegistry
+    private readonly Dictionary<Type, IPrimitiveRenderer> _renderers = renderers.ToDictionary(renderer => renderer.PrimitiveType);
+
+    public void Render(Primitive primitive, RenderContext context)
     {
-        private readonly List<IPrimitiveRenderer> _renderers;
-
-        public PrimitiveRendererRegistry(IEnumerable<IPrimitiveRenderer> renderers)
+        if (!_renderers.TryGetValue(primitive.GetType(), out IPrimitiveRenderer? renderer))
         {
-            if (renderers is null)
-            {
-                throw new ArgumentNullException(nameof(renderers));
-            }
-
-            _renderers = renderers.ToList();
+            throw new NotSupportedException($"No renderer is registered for {primitive.GetType().Name}.");
         }
 
-        public IPrimitiveRenderer GetRendererFor(PrimitiveBase primitive)
-        {
-            IPrimitiveRenderer renderer = _renderers.FirstOrDefault(r => r.CanRender(primitive));
-
-            if (renderer is null)
-            {
-                throw new NotSupportedException($"No renderer found for primitive type: {primitive.GetType().Name}.");
-            }
-
-            return renderer;
-        }
+        renderer.Render(primitive, context);
     }
 }

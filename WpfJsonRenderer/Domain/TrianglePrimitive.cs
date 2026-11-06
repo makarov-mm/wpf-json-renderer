@@ -1,24 +1,7 @@
-﻿namespace WpfJsonRenderer.Domain
+﻿namespace WpfJsonRenderer.Domain;
+
+/// <summary>A triangle, outlined or filled with <see cref="Primitive.Color"/>.</summary>
+public sealed record TrianglePrimitive(Point2D A, Point2D B, Point2D C, bool IsFilled, ArgbColor Color) : Primitive(Color)
 {
-    public class TrianglePrimitive : PrimitiveBase
-    {
-        public Point2D A { get; }
-        public Point2D B { get; }
-        public Point2D C { get; }
-        public bool IsFilled { get; }
-
-        public TrianglePrimitive(Point2D a, Point2D b, Point2D c, bool isFilled, ArgbColor color)
-            : base(color)
-        {
-            A = a;
-            B = b;
-            C = c;
-            IsFilled = isFilled;
-        }
-
-        public override Rect2D GetBounds()
-        {
-            return Rect2D.FromPoints(A, B, C);
-        }
-    }
+    public override Rect2D Bounds => Rect2D.FromPoints(A, B, C);
 }

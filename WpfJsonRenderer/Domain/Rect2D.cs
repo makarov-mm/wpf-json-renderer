@@ -1,49 +1,40 @@
-﻿namespace WpfJsonRenderer.Domain
+﻿namespace WpfJsonRenderer.Domain;
+
+/// <summary>An axis-aligned rectangle in scene coordinates.</summary>
+public readonly record struct Rect2D(double MinX, double MinY, double MaxX, double MaxY)
 {
-    public struct Rect2D
+    public double Width => MaxX - MinX;
+
+    public double Height => MaxY - MinY;
+
+    public Point2D Center => new((MinX + MaxX) / 2, (MinY + MaxY) / 2);
+
+    /// <summary>Returns the smallest rectangle that contains all <paramref name="points"/>.</summary>
+    public static Rect2D FromPoints(params ReadOnlySpan<Point2D> points)
     {
-        public double MinX { get; }
-        public double MinY { get; }
-        public double MaxX { get; }
-        public double MaxY { get; }
-
-        public Rect2D(double minX, double minY, double maxX, double maxY)
+        if (points.IsEmpty)
         {
-            MinX = minX;
-            MinY = minY;
-            MaxX = maxX;
-            MaxY = maxY;
+            throw new ArgumentException("At least one point is required.", nameof(points));
         }
 
-        public double Width => MaxX - MinX;
-        public double Height => MaxY - MinY;
+        double minX = points[0].X, maxX = minX;
+        double minY = points[0].Y, maxY = minY;
 
-        public static Rect2D FromPoints(params Point2D[] points)
+        foreach (Point2D point in points[1..])
         {
-            double minX = points[0].X;
-            double minY = points[0].Y;
-            double maxX = points[0].X;
-            double maxY = points[0].Y;
-
-            foreach (var p in points)
-            {
-                if (p.X < minX) minX = p.X;
-                if (p.Y < minY) minY = p.Y;
-                if (p.X > maxX) maxX = p.X;
-                if (p.Y > maxY) maxY = p.Y;
-            }
-
-            return new Rect2D(minX, minY, maxX, maxY);
+            minX = Math.Min(minX, point.X);
+            maxX = Math.Max(maxX, point.X);
+            minY = Math.Min(minY, point.Y);
+            maxY = Math.Max(maxY, point.Y);
         }
 
-        public Rect2D Expand(Rect2D other)
-        {
-            return new Rect2D(
-                MinX < other.MinX ? MinX : other.MinX,
-                MinY < other.MinY ? MinY : other.MinY,
-                MaxX > other.MaxX ? MaxX : other.MaxX,
-                MaxY > other.MaxY ? MaxY : other.MaxY
-            );
-        }
+        return new Rect2D(minX, minY, maxX, maxY);
     }
+
+    /// <summary>Returns the smallest rectangle that contains both this rectangle and <paramref name="other"/>.</summary>
+    public Rect2D Union(Rect2D other) => new(
+        Math.Min(MinX, other.MinX),
+        Math.Min(MinY, other.MinY),
+        Math.Max(MaxX, other.MaxX),
+        Math.Max(MaxY, other.MaxY));
 }
